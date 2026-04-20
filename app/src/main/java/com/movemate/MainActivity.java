@@ -3,6 +3,10 @@ package com.movemate;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
@@ -52,7 +56,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     private MapView map;
     private FusedLocationProviderClient fusedLocationClient;
@@ -77,6 +81,13 @@ public class MainActivity extends AppCompatActivity {
     private DBHelper dbHelper;
     private FirestoreRepository firestoreRepo;
     private FirebaseAuth auth;
+
+    // Step counter
+    private SensorManager sensorManager;
+    private Sensor stepCounterSensor;
+    private boolean hasStepSensor = false;
+    private float initialStepCount = -1f;
+    private int currentStepCount = 0;
 
     private String currentRunName = "";
 
@@ -111,6 +122,23 @@ public class MainActivity extends AppCompatActivity {
         firestoreRepo = new FirestoreRepository();
         auth = FirebaseAuth.getInstance();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        // Initialize step counter sensor
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        stepCounterSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        hasStepSensor = (stepCounterSensor != null);
+        if (!hasStepSensor) {
+            Log.w("MainActivity", "Device does not have a step counter sensor. Steps will be estimated.");
+        }
+
+        // Request ACTIVITY_RECOGNITION permission for step counter on Android 10+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1001);
+            }
+        }
 
         timerText = findViewById(R.id.timerText);
         statDistance = findViewById(R.id.statDistance);
@@ -238,6 +266,11 @@ public class MainActivity extends AppCompatActivity {
         startLocationUpdates();
         centerOnLastLocation();
 
+        // Reset and start step counter
+        initialStepCount = -1f;
+        currentStepCount = 0;
+        startStepCounter();
+
         // Start foreground tracking service
         Intent serviceIntent = new Intent(this, RunTrackingService.class);
         serviceIntent.setAction(RunTrackingService.ACTION_START);
@@ -260,15 +293,21 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopRun() {
         stopLocationUpdates();
+        stopStepCounter();
         isTracking = false;
         isPaused = false;
         controlButton.setText("Start Run");
         long durationMs = SystemClock.elapsedRealtime() - startTimeMs;
         double distanceKm = distanceMeters / 1000.0;
         int calories = (int) (distanceKm * 60); // simple formula
+
+        // Use sensor steps if available, otherwise estimate from distance
+        int steps = currentStepCount > 0 ? currentStepCount : estimateSteps(distanceKm);
+        Log.d("MainActivity", "Run stopped. Steps: " + steps + " (sensor=" + hasStepSensor + ", raw=" + currentStepCount + ")");
+
         saveRun(currentRunName, distanceKm, durationMs, calories, new ArrayList<>(routePoints));
-        pushRunToFirestore(distanceKm, durationMs, calories);
-        Toast.makeText(this, "Run saved", Toast.LENGTH_SHORT).show();
+        pushRunToFirestore(distanceKm, durationMs, calories, steps);
+        Toast.makeText(this, "Run saved \u2022 " + steps + " steps", Toast.LENGTH_SHORT).show();
 
         // Stop foreground tracking service
         Intent serviceIntent = new Intent(this, RunTrackingService.class);
@@ -428,15 +467,15 @@ public class MainActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> Log.e("MainActivity", "Failed to ensure user doc", e));
     }
 
-    private void pushRunToFirestore(double distanceKm, long durationMs, int calories) {
+    private void pushRunToFirestore(double distanceKm, long durationMs, int calories, int steps) {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) {
             Log.w("MainActivity", "pushRunToFirestore: user not signed in");
             return;
         }
         Log.d("MainActivity", "pushRunToFirestore: uid=" + user.getUid()
-                + " dist=" + distanceKm + " dur=" + (durationMs / 1000) + "s cal=" + calories);
-        RunLogModel run = new RunLogModel(distanceKm, 0, calories, durationMs / 1000);
+                + " dist=" + distanceKm + " dur=" + (durationMs / 1000) + "s cal=" + calories + " steps=" + steps);
+        RunLogModel run = new RunLogModel(distanceKm, steps, calories, durationMs / 1000);
         firestoreRepo.addRun(user.getUid(), run)
                 .addOnSuccessListener(ref -> {
                     Log.d("MainActivity", "Run added to Firestore successfully: " + ref.getId());
@@ -468,5 +507,47 @@ public class MainActivity extends AppCompatActivity {
             stopRun();
         }
         super.onBackPressed();
+    }
+
+    // ======================== STEP COUNTER ========================
+
+    private void startStepCounter() {
+        if (hasStepSensor && sensorManager != null) {
+            sensorManager.registerListener(this, stepCounterSensor, SensorManager.SENSOR_DELAY_UI);
+            Log.d("MainActivity", "Step counter sensor registered");
+        }
+    }
+
+    private void stopStepCounter() {
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+            Log.d("MainActivity", "Step counter sensor unregistered. Total steps: " + currentStepCount);
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
+            // TYPE_STEP_COUNTER gives cumulative steps since last reboot
+            if (initialStepCount < 0) {
+                // First reading — record baseline
+                initialStepCount = event.values[0];
+                Log.d("MainActivity", "Step counter baseline: " + initialStepCount);
+            }
+            currentStepCount = (int) (event.values[0] - initialStepCount);
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Not needed for step counter
+    }
+
+    /**
+     * Estimates steps from distance when step counter sensor is unavailable.
+     * Average stride length is ~0.762m, so ~1312 steps per km.
+     */
+    private int estimateSteps(double distanceKm) {
+        return (int) (distanceKm * 1312);
     }
 }
