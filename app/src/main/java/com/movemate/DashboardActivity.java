@@ -1,8 +1,10 @@
 package com.movemate;
 
+import android.Manifest;
 import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -17,6 +19,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -33,6 +37,8 @@ import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
@@ -42,6 +48,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.movemate.firestore.FirestoreRepository;
 import com.movemate.firestore.RunLogModel;
 import com.movemate.notification.NotificationHelper;
+import com.squareup.picasso.Picasso;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -50,6 +57,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.GET;
+import retrofit2.http.Query;
 
 public class DashboardActivity extends AppCompatActivity {
     private static final String GOALS_PREFS = "goals_prefs";
@@ -61,6 +76,7 @@ public class DashboardActivity extends AppCompatActivity {
     private DBHelper dbHelper;
     private FirestoreRepository firestoreRepo;
     private SwipeRefreshLayout swipeRefreshLayout;
+    private FusedLocationProviderClient fusedLocationClient;
 
     // UI references
     private ImageView profileImage;
@@ -72,6 +88,12 @@ public class DashboardActivity extends AppCompatActivity {
     private PieChart dashboardPieChart;
     private LinearLayout emptyStateLayout;
     private RecyclerView recentRecycler;
+
+    // Weather UI references
+    private CardView weatherCard;
+    private ImageView dashWeatherIcon;
+    private TextView dashWeatherTemp, dashWeatherCondition, dashWeatherLocation;
+    private TextView dashWeatherWind, dashWeatherHumidity;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +108,7 @@ public class DashboardActivity extends AppCompatActivity {
 
         dbHelper = new DBHelper(this);
         firestoreRepo = new FirestoreRepository();
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         gestureDetector = new GestureDetector(this, new DashboardGestureListener());
 
         // Bind views
@@ -169,6 +192,9 @@ public class DashboardActivity extends AppCompatActivity {
 
         // Load all data
         refreshAllData();
+
+        // Fetch weather for dashboard
+        fetchDashboardWeather();
     }
 
     private void bindViews() {
@@ -189,6 +215,15 @@ public class DashboardActivity extends AppCompatActivity {
         dashboardPieChart = findViewById(R.id.dashboardPieChart);
         emptyStateLayout = findViewById(R.id.emptyStateLayout);
         recentRecycler = findViewById(R.id.recentRecycler);
+
+        // Weather views
+        weatherCard = findViewById(R.id.weatherCard);
+        dashWeatherIcon = findViewById(R.id.dashWeatherIcon);
+        dashWeatherTemp = findViewById(R.id.dashWeatherTemp);
+        dashWeatherCondition = findViewById(R.id.dashWeatherCondition);
+        dashWeatherLocation = findViewById(R.id.dashWeatherLocation);
+        dashWeatherWind = findViewById(R.id.dashWeatherWind);
+        dashWeatherHumidity = findViewById(R.id.dashWeatherHumidity);
     }
 
     private void setupGreeting() {
@@ -678,5 +713,126 @@ public class DashboardActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         refreshAllData();
+    }
+
+    // ======================== WEATHER API ========================
+
+    private void fetchDashboardWeather() {
+        // Try to get location for weather, fall back to city name
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
+                if (location != null) {
+                    fetchWeatherByCoords(location.getLatitude(), location.getLongitude());
+                } else {
+                    fetchWeatherByCity("Mumbai");
+                }
+            }).addOnFailureListener(e -> fetchWeatherByCity("Mumbai"));
+        } else {
+            fetchWeatherByCity("Mumbai");
+        }
+    }
+
+    private WeatherApiService getWeatherService() {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://api.openweathermap.org/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        return retrofit.create(WeatherApiService.class);
+    }
+
+    private void fetchWeatherByCoords(double lat, double lon) {
+        String apiKey = BuildConfig.OPEN_WEATHER_API_KEY;
+        getWeatherService().currentByCoords(lat, lon, "metric", apiKey)
+                .enqueue(new WeatherCallback());
+    }
+
+    private void fetchWeatherByCity(String city) {
+        String apiKey = BuildConfig.OPEN_WEATHER_API_KEY;
+        getWeatherService().currentByCity(city, "metric", apiKey)
+                .enqueue(new WeatherCallback());
+    }
+
+    private class WeatherCallback implements Callback<DashWeatherResponse> {
+        @Override
+        public void onResponse(Call<DashWeatherResponse> call, Response<DashWeatherResponse> response) {
+            if (!response.isSuccessful() || response.body() == null) {
+                Log.w("DashboardActivity", "Weather API failed: " + response.code());
+                return;
+            }
+            DashWeatherResponse w = response.body();
+            runOnUiThread(() -> updateWeatherCard(w));
+        }
+
+        @Override
+        public void onFailure(Call<DashWeatherResponse> call, Throwable t) {
+            Log.e("DashboardActivity", "Weather fetch failed", t);
+        }
+    }
+
+    private void updateWeatherCard(DashWeatherResponse w) {
+        if (weatherCard == null) return;
+
+        weatherCard.setVisibility(View.VISIBLE);
+
+        if (dashWeatherTemp != null) {
+            dashWeatherTemp.setText(String.format(Locale.getDefault(), "%.0f°C", w.main.temp));
+        }
+        if (dashWeatherCondition != null && w.weather != null && !w.weather.isEmpty()) {
+            String desc = w.weather.get(0).description;
+            dashWeatherCondition.setText(desc.substring(0, 1).toUpperCase() + desc.substring(1));
+        }
+        if (dashWeatherLocation != null) {
+            dashWeatherLocation.setText("📍 " + w.name);
+        }
+        if (dashWeatherWind != null) {
+            dashWeatherWind.setText(String.format(Locale.getDefault(), "%.1f", w.wind.speed));
+        }
+        if (dashWeatherHumidity != null) {
+            dashWeatherHumidity.setText(String.valueOf(w.main.humidity));
+        }
+        if (dashWeatherIcon != null && w.weather != null && !w.weather.isEmpty()) {
+            String iconCode = w.weather.get(0).icon;
+            String iconUrl = "https://openweathermap.org/img/wn/" + iconCode + "@2x.png";
+            Picasso.get().load(iconUrl).into(dashWeatherIcon);
+        }
+    }
+
+    // ======================== WEATHER API MODELS ========================
+
+    interface WeatherApiService {
+        @GET("data/2.5/weather")
+        Call<DashWeatherResponse> currentByCity(
+                @Query("q") String city,
+                @Query("units") String units,
+                @Query("appid") String apiKey);
+
+        @GET("data/2.5/weather")
+        Call<DashWeatherResponse> currentByCoords(
+                @Query("lat") double lat,
+                @Query("lon") double lon,
+                @Query("units") String units,
+                @Query("appid") String apiKey);
+    }
+
+    static class DashWeatherResponse {
+        Main main;
+        java.util.List<Weather> weather;
+        Wind wind;
+        String name;
+
+        static class Main {
+            double temp;
+            int humidity;
+        }
+
+        static class Weather {
+            String description;
+            String icon;
+        }
+
+        static class Wind {
+            double speed;
+        }
     }
 }
