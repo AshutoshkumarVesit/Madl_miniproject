@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Store images in internal files dir under "profile_pictures" -->
+    <files-path name="internal_images" path="profile_pictures/" />
+    <!-- Allow FileProvider to serve temporary camera files from cache -->
+    <cache-path name="temp_cache" path="." />
+</paths>

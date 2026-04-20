@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Neon Velocity Design System Colors -->
+
+    <!-- Primary: Neon Cyan -->
+    <color name="color_primary">#00E5FF</color>
+    <color name="color_primary_variant">#00DAF3</color>
+    <color name="color_primary_light">#C3F5FF</color>
+    <color name="color_on_primary">#001F24</color>
+    <color name="color_primary_container">#00626E</color>
+
+    <!-- Secondary: Neon Purple -->
+    <color name="color_secondary">#EDB1FF</color>
+    <color name="color_secondary_container">#6E208C</color>
+    <color name="color_on_secondary">#520070</color>
+
+    <!-- Tertiary: Electric Violet -->
+    <color name="color_tertiary">#D9C8FF</color>
+    <color name="color_tertiary_container">#5600CA</color>
+
+    <!-- Backgrounds & Surfaces (Deep Navy / AMOLED) -->
+    <color name="color_background">#0A0E1A</color>
+    <color name="color_surface">#0F131F</color>
+    <color name="color_surface_container_low">#171B28</color>
+    <color name="color_surface_container">#1B1F2C</color>
+    <color name="color_surface_container_high">#262A37</color>
+    <color name="color_surface_container_highest">#313442</color>
+    <color name="color_surface_variant">#3B494C</color>
+
+    <!-- On-Surface Text Colors -->
+    <color name="color_on_surface">#DFE2F3</color>
+    <color name="color_on_surface_secondary">#BAC9CC</color>
+
+    <!-- Outline -->
+    <color name="color_outline">#849396</color>
+    <color name="color_outline_variant">#3B494C</color>
+
+    <!-- Error -->
+    <color name="color_error">#FFB4AB</color>
+    <color name="color_error_container">#93000A</color>
+
+    <!-- Accent (same as primary for backcompat) -->
+    <color name="color_accent">#00E5FF</color>
+
+    <!-- Gradient endpoints -->
+    <color name="gradient_start">#00E5FF</color>
+    <color name="gradient_end">#6E208C</color>
+
+    <!-- Nav bar -->
+    <color name="color_nav_surface">#0F131F</color>
+    <color name="color_nav_indicator">#00363D</color>
+</resources>

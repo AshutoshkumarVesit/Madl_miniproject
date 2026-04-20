@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/color_background">
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/goalCard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="6dp"
+        app:cardBackgroundColor="@color/color_surface"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Weekly Goal (km)" android:textColor="@color/color_on_surface" />
+            <EditText android:id="@+id/weeklyGoalInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" android:background="@drawable/bg_panel" android:textColor="@color/color_on_surface" android:padding="8dp" />
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Monthly Goal (km)" android:layout_marginTop="12dp" android:textColor="@color/color_on_surface" />
+            <EditText android:id="@+id/monthlyGoalInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="number" android:background="@drawable/bg_panel" android:textColor="@color/color_on_surface" android:padding="8dp" />
+
+            <Button android:id="@+id/saveGoalButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Save Goals" android:layout_marginTop="12dp" android:backgroundTint="@color/color_primary" android:textColor="@color/color_on_primary" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/progressCard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="6dp"
+        app:cardBackgroundColor="@color/color_surface"
+        app:layout_constraintTop_toBottomOf="@id/goalCard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Weekly Progress" android:textColor="@color/color_on_surface" />
+            <ProgressBar android:id="@+id/weeklyProgressBar" style="@android:style/Widget.ProgressBar.Horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/weeklyProgressText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0/0 km" android:textColor="@color/color_on_surface_secondary" />
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Monthly Progress" android:layout_marginTop="12dp" android:textColor="@color/color_on_surface" />
+            <ProgressBar android:id="@+id/monthlyProgressBar" style="@android:style/Widget.ProgressBar.Horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/monthlyProgressText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0/0 km" android:textColor="@color/color_on_surface_secondary" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/color_surface"
+        app:itemIconTint="@color/color_on_surface"
+        app:itemTextColor="@color/color_on_surface"
+        app:menu="@menu/bottom_nav_menu"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MoveMate</string>
+    <string name="welcome_title">Welcome to MoveMate</string>
+    <string name="welcome_subtitle">Track your moves and stay on top of your goals.</string>
+    <string name="action_get_started">Get Started</string>
+    <string name="action_login">Log In</string>
+    <string name="action_skip">Skip for now</string>
+    <string name="login_title">Sign In</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Continue</string>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_subtitle">Quick access</string>
+    <string name="open_tracking">Open Tracking</string>
+    <string name="open_profile">Profile</string>
+    <string name="main_tracking_title">Tracking</string>
+    <string name="main_tracking_status">Status: Idle</string>
+    <string name="main_start">Start Tracking</string>
+    <string name="main_stop">Stop Tracking</string>
+    <string name="main_tracking_active">Status: Tracking</string>
+    <string name="main_tracking_idle">Status: Idle</string>
+    <string name="profile_title">Profile</string>
+    <string name="profile_email">user@example.com</string>
+    <string name="profile_name">John Doe</string>
+    <string name="profile_back_dashboard">Back to Dashboard</string>
+
+    <!-- Notification strings -->
+    <string name="notif_channel_reminders">Reminders</string>
+    <string name="notif_channel_tracking">Run Tracking</string>
+    <string name="notif_channel_achievements">Achievements</string>
+    <string name="notif_run_in_progress">Run in progress</string>
+    <string name="notif_run_completed">Run Completed!</string>
+    <string name="notif_goal_achieved">Goal Achieved!</string>
+    <string name="notif_daily_reminder_title">Time to Run!</string>
+    <string name="notif_inactivity_title">We miss you!</string>
+    <string name="notif_inactivity_message">You haven\'t logged a run recently. Time to lace up!</string>
+</resources>
